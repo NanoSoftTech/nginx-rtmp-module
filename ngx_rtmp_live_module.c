@@ -300,8 +300,9 @@ ngx_rtmp_live_av(ngx_rtmp_session_t *s, ngx_rtmp_header_t *h,
     ngx_rtmp_header_t               ch, lh;
     ngx_uint_t                      prio, peer_prio;
     ngx_uint_t                      peers, dropped_peers;
-    size_t                          header_offset;
+    size_t                          header_offset, last_offset;
     ngx_uint_t                      header_version, meta_version;
+    ngx_int_t                       diff_timestamp;
 
     lacf = ngx_rtmp_get_module_app_conf(s, ngx_rtmp_live_module);
     if (lacf == NULL) {
@@ -345,14 +346,17 @@ ngx_rtmp_live_av(ngx_rtmp_session_t *s, ngx_rtmp_header_t *h,
         ch.csid = NGX_RTMP_LIVE_CSID_VIDEO;
         lh.timestamp = ctx->last_video;
         ctx->last_video = ch.timestamp;
+        last_offset = offsetof(ngx_rtmp_live_ctx_t, last_video);
     } else {
         /* audio priority is the same as video key frame's */
         prio = NGX_RTMP_VIDEO_KEY_FRAME;
         ch.csid = NGX_RTMP_LIVE_CSID_AUDIO;
         lh.timestamp = ctx->last_audio;
         ctx->last_audio = ch.timestamp;
+        last_offset = offsetof(ngx_rtmp_live_ctx_t, last_audio);
     }
     lh.csid = ch.csid;
+    diff_timestamp = ch.timestamp - lh.timestamp;
 
     out = ngx_rtmp_append_shared_bufs(cscf, NULL, in);
     ngx_rtmp_prepare_message(s, &ch, &lh, out);
@@ -414,6 +418,7 @@ ngx_rtmp_live_av(ngx_rtmp_session_t *s, ngx_rtmp_header_t *h,
             {
                 *(ngx_uint_t *)((u_char *)pctx + header_offset) 
                     = header_version;
+                *(uint32_t *)((u_char *)pctx + last_offset) = ch.timestamp;
             }
             ngx_rtmp_free_shared_chain(cscf, peer_out);
             continue;
@@ -445,6 +450,8 @@ ngx_rtmp_live_av(ngx_rtmp_session_t *s, ngx_rtmp_header_t *h,
         if (ngx_rtmp_send_message(ss, out, peer_prio) != NGX_OK) {
             ++pctx->dropped;
             ++dropped_peers;
+        } else  {
+            *(uint32_t *)((u_char *)pctx + last_offset) += diff_timestamp;
         }
     }
     ngx_rtmp_free_shared_chain(cscf, out);
