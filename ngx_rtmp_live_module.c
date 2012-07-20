@@ -403,7 +403,7 @@ ngx_rtmp_live_av(ngx_rtmp_session_t *s, ngx_rtmp_header_t *h,
 
         /* send absolute frame */
         if ((pctx->msg_mask & (1 << h->type)) == 0) {
-            ch.timestamp = ngx_current_msec - ss->epoch;
+            ch.timestamp = s->epoch + h->timestamp - ss->epoch;
             ngx_log_debug2(NGX_LOG_DEBUG_RTMP, ss->connection->log, 0,
                     "live: av: abs %s timestamp=%uD",
                     h->type == NGX_RTMP_MSG_VIDEO ? "video" : "audio",
