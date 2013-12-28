@@ -164,7 +164,9 @@ function AdobeAuthen ()
 end
 
 --[ Main ]--
-debug ("Authen request: " .. ngx.var.request_body);
+if ngx.var.request_body ~= nil then
+  debug ("Authen request: " .. ngx.var.request_body);
+end
 
 if args["tcurl"] ~= nil then
   debug ("-- process tcurl: " .. args["tcurl"]);
